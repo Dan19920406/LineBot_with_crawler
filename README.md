@@ -27,3 +27,4 @@ Crawling stock, weather, gas price information with line bot application
 > ---
 > 油價查詢範例：
 > * 油價
+* clock.py ping heroku web keep it awake(because use it for free)
