@@ -15,16 +15,15 @@ Crawling stock, weather, gas price information with line bot application
 * Crawling gas price info from GoodLife [gas price webbsite](https://gas.goodlife.tw)
 * weather and stock web use selenium with chromedriver because both webpage base on javascript develop 
 * LineBot QRCode as below:
-![](https://qr-official.line.me/sid/L/989vvfpc.png)
+![](http://qr-official.line.me/sid/L/989vvfpc.png)
 * Query format:
-> 天氣 (北,中,南) (縣市)
 > 天氣查詢範例：
+> * 天氣 (北,中,南) (縣市)
 > * 天氣 北 新北市 
 > ---
-> 股價 (股票代碼)
 > 股價查詢範例：
+> * 股價 (股票代碼)
 > * 股價 2330
 > ---
-> 油價
 > 油價查詢範例：
 > * 油價
