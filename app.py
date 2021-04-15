@@ -1,11 +1,9 @@
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from linebot.models import *
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
 import re
 import json
 import twstock
@@ -14,43 +12,31 @@ import time
 app = Flask(__name__)
 
 # Channel Access Token
-line_bot_api = LineBotApi('Token')
+line_bot_api = LineBotApi('luiQ79dNJtpnNPe1q5ATGTtCO1GRfu9Wi4BH59in/ndMO8LXINcMh3ORIQ2htwqs5SprRLWE3wLu8D1nJ1McHI0wF7zZIprzHBbv5fVBbQp0dB3rnx5WnihEqKgnZ707UZy8MCXdZmXUzE0mfhDz+AdB04t89/1O/w1cDnyilFU=')
 # Channel Secret
-handler = WebhookHandler('Secert_key')
+handler = WebhookHandler('ac47e0fd152f0e25cf9f47a9579d41bf')
 
 #個地區ＩＤ對照dict
-area = {"北":{
-            "基隆市":"10017",
-            "台北市":"63",
-            "新北市":"65",
-            "桃園市":"68",
-            "新竹市":"10018",
-            "新竹縣":"10004"
-            },
-        "中":{
-            "苗栗縣":"10005",
-            "台中市":"66",
-            "彰化縣":"10007",
-            "南投縣":"10008",
-            "雲林縣":"10009",
-            "嘉義市":"10020",
-            "嘉義縣":"10010"
-            },
-        "南":{
-            "台南市":"67",
-            "高雄市":"64",
-            "屏東縣":"10013"
-            },
-        "東":{
-            "宜蘭縣":"10002",
-            "花蓮縣":"10015",
-            "台東縣":"10014"
-            },
-        "外島":{
-            "澎湖縣":"10016",
-            "金門縣":"09020",
-            "連江縣":"09007"
-            }
+area = {"基隆":["10017"],
+        "台北":["63"],
+        "新北":["65"],
+        "桃園":["68"],
+        "新竹":["10018","10004"],
+        "苗栗":["10005"],
+        "台中":["66"],
+        "彰化":["10007"],
+        "南投":["10008"],
+        "雲林":["10009"],
+        "嘉義":["10020","10010"],
+        "台南":["67"],
+        "高雄":["64"],
+        "屏東":["10013"],
+        "宜蘭":["10002"],
+        "花蓮":["10015"],
+        "台東":["10014"],
+        "澎湖":["10016"],
+        "金門":["09020"],
+        "連江":["09007"]
         }
 
 def crawler_from_chromedriver(url):
@@ -93,56 +79,45 @@ def getGasPrice():
             tmptxt += i.text.replace(" ","").replace(" \n","").replace(":\n",":").replace("油價:",":").replace("\n\n\n","\n").replace("\n\n","\n")
     return tmptxt
 
-def getWeather(z, a):
+def getWeather(d, z):
     #全臺測站分區 - 臺北市測站列表
-    url = 'https://www.cwb.gov.tw/V8/C/W/OBS_County.html?ID=' + area[z][a]
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(crawler_from_chromedriver, url)
-    soup = future.result()
-    #<tbody id='stations'>
-    tbody = soup.find('tbody',{'id':'stations'})
-    #print(tbody)
-    #<tbody>内所有<tr>標籤
-    trs = tbody.find_all('tr')
-    result = []
-    #對list中的每一項 <tr>
-    for tr in trs:
-        try:
-            tmp = {}
-            tmp['zone'] = tr.th.text
-            alltd = tr.find_all('td')
-            #print(f'{alltd}\n\n')
-            tmp['time'] = alltd[0].text
-            tmp['temp'] = alltd[1].text
-            tmp['stat'] = alltd[2].img.get('title')
-            tmp['hum'] = alltd[7].text
-            result.append(tmp)
-        except:
-            pass
+    try:
+        districtCode = area[d]
+        for Code in districtCode:
+            url = f'https://www.cwb.gov.tw/Data/js/Observe/County/{Code}.js?_=' + str(int(time.time()*1000))
+            r = requests.get(url)
+            soup = BeautifulSoup(r.text, 'html.parser')
+            tmp = json.loads(str(soup).split("ST = ")[1].replace(';','').split("var")[0].replace('\'a','a').replace('\'','\"'))
+            for key, value in tmp[Code].items():
+                #print(value)
+                if value['StationName']['C'] == z:
+                    #print(value)
+                    T = value['Time'] #觀測時間
+                    Weather = value["Weather"]['C'] #天氣
+                    Temperature = value["Temperature"]['C']['C'] #溫度
+                    Humidity = value['Humidity']['C'] #相對濕度
+                    WindDir = value['WindDir']['C'] #風向
+                    result = f'{z}\n觀測時間：{T}\n天氣：{Weather}\n溫度：{Temperature} degrees\n相對濕度：{Humidity}%\n風向：{WindDir}'
+                    return result
+    except Exception as e:
+        print(e)
+        pass
+        
+    result = '無此觀測站!'
     return result
-    
+
 def getStock(num):
     tmp = ''
     try:
-        url = 'https://www.cmoney.tw/finance/f00025.aspx?s='+str(num)
-        with ThreadPoolExecutor() as executor:
-            future = executor.submit(crawler_from_chromedriver, url)
-        soup = future.result()
-        name = soup.find('h1', class_="page-title").text
-        tmp += f"股價名稱:{name}\n"
-        stockInfo = soup.find('ul', class_="s-infor-list")
-        if stockInfo.find_all('li', class_='up') != []:
-            info = stockInfo.find_all('li', class_='up')
-        elif stockInfo.find_all('li', class_='down') != [] and stockInfo.find_all('li', class_='up') == []:
-            info = stockInfo.find_all('li', class_='down')
-        else:
-            info = stockInfo.find_all('li', class_='undefined')
-        price = info[0].text.replace('\n','')
-        change = info[1].text.replace('\n','')
-        rise = info[2].text.replace('\n','')
-        tmp += f"{price[:2]}:{price[2:]}元\n"
-        tmp += f"{change[:2]}:{change[2:]}\n"
-        tmp += f"{rise[:2]}:{rise[2:]}"
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{num}.TW?region=US&lang=en-US&includePrePost=false&interval=2m&useYfid=true&range=1d&corsDomain=finance.yahoo.com&.tsrc=finance"
+        r = requests.get(url)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        tmpr = json.loads(str(soup))
+        stockName = tmpr["chart"]["result"][0]['meta']['symbol']
+        regularMarketPrice = tmpr["chart"]["result"][0]['meta']['regularMarketPrice'] #["quote"][0]['low']
+        previousClose = tmpr["chart"]["result"][0]['meta']['previousClose']
+        changed = (regularMarketPrice-previousClose)/regularMarketPrice*100
+        tmp += f'Stock : {stockName}\nCurrent price = ${regularMarketPrice}\nChanged = {changed:.2f}%'
     except Exception as e:
         print(f'Error : {e}')
         tmp += 'Something wrong, we\'ll fix it!'
@@ -180,38 +155,21 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token, message)
     elif msg.split(' ')[0] in ["天氣","氣象"]:
         if len(msg.split(' ')) == 1:
-            try:
-                tmpItem = []
-                for a in area:
-                    tmpItem.append(QuickReplyButton(action=MessageAction(label=a, text=f"天氣 {a}")))
-                message = TextSendMessage(text="選擇您想查詢的地區!",quick_reply=QuickReply(items=tmpItem))
-            except:
-                message = TextSendMessage(text="沒有您想查詢的地區!")
+            message = TextSendMessage(text=f"請輸入行政區與區域!\nEx : 天氣 新北 石碇")
             line_bot_api.reply_message(event.reply_token, message)
+            
         elif len(msg.split(' ')) == 2:
-            try:
-                tmpItem = []
-                zone = msg.split(' ')[1]
-                for a in area[msg.split(' ')[1]]:
-                    tmpItem.append(QuickReplyButton(action=MessageAction(label=a, text=f"天氣 {zone} {a}")))
-                message = TextSendMessage(text="選擇您想查詢的地區!",quick_reply=QuickReply(items=tmpItem))
-            except:
-                message = TextSendMessage(text="沒有您想查詢的地區!")
+            tmpData = msg.split(' ')[1]
+            if tmpData in area:
+                message = TextSendMessage(text=f"請輸入欲查哪個區域!")
+            else:
+                message = TextSendMessage(text=f"查詢不到{tmpData}!")
             line_bot_api.reply_message(event.reply_token, message)
             
         elif len(msg.split(' ')) == 3:
             zone = msg.split(' ')
-            tmptxt = ""
-            #{'zone': '新屋', 'time': '14:00', 'temp': '29.6', 'stat': '晴', 'hum': '74'}
-            #try:
-            #print(zone[2])
-            r = getWeather(zone[1],zone[2])
-            #print(r)
-            for i in r:
-                tmptxt+=i['zone'] + ',' + i['temp'] + '度C,天氣' + i['stat'] + '\n'
+            tmptxt = getWeather(zone[1],zone[2])
             message = TextSendMessage(text=tmptxt)
-            #except:
-                #message = TextSendMessage(text="沒有您想查詢的地區!")
             line_bot_api.reply_message(event.reply_token, message)
         else:
             pass
@@ -224,18 +182,7 @@ def handle_message(event):
         except Exception as e:
             print(f'Error : {e}')
     else:
-        tmpurl = "https://linebotqaservice.azurewebsites.net/qnamaker/knowledgebases/6bb3d1d6-33c6-4948-8665-ff57baf5d9cb/generateAnswer"
-        
-        r = requests.post(tmpurl,json.dumps({'question': msg}),
-                   headers={
-                       'Content-Type': 'application/json',
-                       'Authorization': 'EndpointKey 9c743d8a-7488-484b-8038-5f20ec1df7cf'
-                   })
-        data = r.json()
-        
-        if len(data['answers'][0]['questions']) != 0:
-            message = TextSendMessage(text=data['answers'][0]['answer'])
-            line_bot_api.reply_message(event.reply_token, message)
+        pass
 
 import os
 if __name__ == "__main__":
