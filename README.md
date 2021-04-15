@@ -1,5 +1,8 @@
 # LineBot_with_crawler
-Crawling stock, weather, gas price information with line bot application
+> Information from line bot application
+> 1. Stock
+> 2. Weather
+> 3. gas price
 ---
 # How to use?
 1. Need a Line Developers account
