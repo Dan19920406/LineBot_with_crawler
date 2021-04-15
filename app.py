@@ -12,9 +12,9 @@ import time
 app = Flask(__name__)
 
 # Channel Access Token
-line_bot_api = LineBotApi('luiQ79dNJtpnNPe1q5ATGTtCO1GRfu9Wi4BH59in/ndMO8LXINcMh3ORIQ2htwqs5SprRLWE3wLu8D1nJ1McHI0wF7zZIprzHBbv5fVBbQp0dB3rnx5WnihEqKgnZ707UZy8MCXdZmXUzE0mfhDz+AdB04t89/1O/w1cDnyilFU=')
+line_bot_api = LineBotApi('{token}')
 # Channel Secret
-handler = WebhookHandler('ac47e0fd152f0e25cf9f47a9579d41bf')
+handler = WebhookHandler('{token}')
 
 #個地區ＩＤ對照dict
 area = {"基隆":["10017"],
