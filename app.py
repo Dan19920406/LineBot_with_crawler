@@ -111,6 +111,9 @@ def getStock(num):
     try:
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{num}.TW?region=US&lang=en-US&includePrePost=false&interval=2m&useYfid=true&range=1d&corsDomain=finance.yahoo.com&.tsrc=finance"
         r = requests.get(url)
+        if r.status_code != 200:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{num}.TWO?region=US&lang=en-US&includePrePost=false&interval=2m&useYfid=true&range=1d&corsDomain=finance.yahoo.com&.tsrc=finance"
+            r = requests.get(url)
         soup = BeautifulSoup(r.text, 'html.parser')
         tmpr = json.loads(str(soup))
         stockName = tmpr["chart"]["result"][0]['meta']['symbol']
